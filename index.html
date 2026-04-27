@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Touch the Numbers</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+height: 100%;
+background: #0d0d0d;
+color: #fff;
+font-family: ‘Arial Black’, ‘Arial Bold’, Arial, sans-serif;
+overflow: hidden;
+touch-action: none;
+user-select: none;
+-webkit-user-select: none;
+}
+
+body {
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+min-height: 100vh;
+}
+
+.container {
+width: 100%;
+max-width: 440px;
+padding: 12px;
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 10px;
+}
+
+.title {
+font-size: clamp(16px, 4.5vw, 24px);
+font-weight: 900;
+letter-spacing: 2px;
+color: #f5c518;
+text-shadow: 0 2px 10px rgba(245,197,24,0.5);
+text-transform: uppercase;
+}
+
+.stats {
+width: 100%;
+display: flex;
+gap: 8px;
+}
+
+.stat-box {
+flex: 1;
+background: #1a1a1a;
+border: 2px solid #2a2a2a;
+border-radius: 10px;
+padding: 7px 4px;
+text-align: center;
+}
+
+.stat-label {
+font-size: 9px;
+letter-spacing: 1px;
+color: #666;
+text-transform: uppercase;
+font-family: Arial, sans-serif;
+font-weight: normal;
+}
+
+.stat-value {
+font-size: clamp(18px, 5vw, 26px);
+font-weight: 900;
+color: #f5c518;
+line-height: 1.1;
+}
+.stat-value.white { color: #ccc; }
+.stat-value.red   { color: #ff4444; }
+
+.next-bar {
+width: 100%;
+background: #1a1a1a;
+border: 2px solid #2a2a2a;
+border-radius: 12px;
+padding: 7px 16px;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 14px;
+}
+.next-label { font-size: 12px; color: #666; letter-spacing: 1px; font-family: Arial, sans-serif; font-weight: normal; }
+.next-number {
+font-size: 30px; font-weight: 900; color: #f5c518;
+text-shadow: 0 0 12px rgba(245,197,24,0.6);
+min-width: 44px; text-align: center;
+}
+
+/* フェーズ表示（100モード用） */
+.phase-bar {
+width: 100%;
+background: #1a1a1a;
+border: 2px solid #2a2a2a;
+border-radius: 10px;
+padding: 6px 14px;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+.phase-label { font-size: 11px; color: #666; letter-spacing: 1px; font-family: Arial, sans-serif; font-weight: normal; }
+.phase-dots { display: flex; gap: 7px; }
+.phase-dot {
+width: 22px; height: 22px; border-radius: 50%;
+border: 2px solid #333;
+display: flex; align-items: center; justify-content: center;
+font-size: 10px; font-weight: 900; color: #555;
+font-family: Arial, sans-serif;
+}
+.phase-dot.done   { background: #333; border-color: #555; color: #888; }
+.phase-dot.active { background: #f5c518; border-color: #f5c518; color: #1a0d00; }
+
+.grid-wrap { width: 100%; aspect-ratio: 1; }
+
+.grid {
+width: 100%; height: 100%;
+display: grid;
+gap: 6px; padding: 6px;
+background: #050505;
+border-radius: 18px;
+border: 3px solid #1a1a1a;
+}
+
+/* Gold cell */
+.cell {
+border-radius: 13px;
+display: flex; align-items: center; justify-content: center;
+cursor: pointer;
+font-family: ‘Arial Black’, ‘Arial Bold’, Arial, sans-serif;
+font-weight: 900;
+color: #1a0d00;
+position: relative; overflow: hidden;
+-webkit-tap-highlight-color: transparent;
+transition: transform 0.07s;
+background: radial-gradient(ellipse at 48% 20%,
+#fff5a0 0%, #ffd930 15%, #f5c018 35%,
+#e09000 60%, #a05800 85%, #6b3500 100%);
+border: 2px solid #9a6000;
+box-shadow:
+inset 0 4px 10px rgba(255,245,160,0.65),
+inset 0 -4px 10px rgba(60,20,0,0.6),
+0 4px 12px rgba(160,100,0,0.55),
+0 1px 3px rgba(0,0,0,0.9);
+}
+.cell::after {
+content: ‘’;
+position: absolute; top: 5%; left: 8%; width: 84%; height: 38%;
+background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,200,0.15) 55%, transparent 100%);
+border-radius: 50%; pointer-events: none;
+}
+.cell:active { transform: scale(0.87); }
+
+.cell.done {
+background: radial-gradient(ellipse at 45% 28%, #3e3e3e 0%, #222 55%, #111 100%);
+border: 2px solid #333;
+box-shadow: inset 0 2px 5px rgba(255,255,255,0.06), inset 0 -3px 5px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.8);
+color: #555;
+}
+.cell.done::after { background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 100%); }
+
+.cell.wrong-flash { animation: wrongFlash 0.38s ease forwards; }
+@keyframes wrongFlash {
+0% {
+background: radial-gradient(ellipse at 48% 20%, #ff8080 0%, #ff3333 35%, #cc0000 70%, #880000 100%);
+border-color: #ff2222;
+box-shadow: inset 0 4px 10px rgba(255,180,180,0.5), 0 4px 12px rgba(200,0,0,0.5);
+color: #fff;
+}
+100% {
+background: radial-gradient(ellipse at 48% 20%, #fff5a0 0%, #ffd930 15%, #f5c018 35%, #e09000 60%, #a05800 85%, #6b3500 100%);
+border-color: #9a6000; color: #1a0d00;
+}
+}
+
+/* Overlays */
+.overlay {
+position: fixed; inset: 0; z-index: 100;
+display: flex; flex-direction: column;
+align-items: center; justify-content: center;
+gap: 16px;
+background: rgba(0,0,0,0.93);
+padding: 24px; text-align: center;
+}
+.overlay.hidden { display: none; }
+
+.overlay-title {
+font-size: clamp(20px, 6vw, 34px);
+font-weight: 900; color: #f5c518;
+text-shadow: 0 0 20px rgba(245,197,24,0.65);
+letter-spacing: 2px; text-transform: uppercase;
+}
+
+.overlay-desc {
+color: #777; font-size: 13px; line-height: 1.9;
+max-width: 300px; font-family: Arial, sans-serif; font-weight: normal;
+}
+
+.mode-grid {
+display: grid; grid-template-columns: 1fr 1fr;
+gap: 10px; width: 100%; max-width: 300px;
+}
+
+.gold-btn {
+border-radius: 14px; cursor: pointer;
+font-family: ‘Arial Black’, Arial, sans-serif; font-weight: 900;
+border: none; outline: none;
+transition: transform 0.1s;
+-webkit-tap-highlight-color: transparent;
+position: relative; overflow: hidden;
+background: radial-gradient(ellipse at 48% 20%,
+#fff5a0 0%, #ffd930 15%, #f5c018 35%,
+#e09000 60%, #a05800 85%, #6b3500 100%);
+box-shadow:
+inset 0 4px 10px rgba(255,245,160,0.65),
+inset 0 -4px 10px rgba(60,20,0,0.6),
+0 5px 14px rgba(160,100,0,0.5);
+color: #1a0d00;
+}
+.gold-btn::after {
+content: ‘’; position: absolute; top: 4%; left: 8%; width: 84%; height: 40%;
+background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 100%);
+border-radius: 50%; pointer-events: none;
+}
+.gold-btn:active { transform: scale(0.9); }
+
+.mode-btn { padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.mode-num { font-size: 20px; }
+.mode-sub { font-size: 9px; color: #5a3200; letter-spacing: 1px; font-family: Arial, sans-serif; font-weight: bold; }
+.action-btn { padding: 14px 48px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
+
+/* Countdown */
+.countdown-num {
+font-size: clamp(90px, 28vw, 130px); font-weight: 900;
+color: #f5c518; text-shadow: 0 0 40px rgba(245,197,24,0.7);
+animation: countAnim 0.85s ease-in-out;
+}
+@keyframes countAnim {
+0%   { transform: scale(1.5); opacity: 0; }
+25%  { transform: scale(1);   opacity: 1; }
+75%  { transform: scale(1);   opacity: 1; }
+100% { transform: scale(0.7); opacity: 0; }
+}
+
+/* Result */
+.result-time {
+font-size: clamp(54px, 15vw, 82px); font-weight: 900;
+color: #f5c518; text-shadow: 0 0 30px rgba(245,197,24,0.7); line-height: 1;
+}
+.result-unit { font-size: 11px; letter-spacing: 3px; color: #555; margin-top: -6px; font-family: Arial, sans-serif; font-weight: normal; }
+.info-line { font-size: 13px; color: #888; font-family: Arial, sans-serif; }
+.info-line span { color: #f5c518; font-weight: 900; }
+
+#particles { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+</style>
+
+</head>
+<body>
+
+<canvas id="particles"></canvas>
+
+<!-- Start screen -->
+
+<div class="overlay" id="startScreen">
+  <div class="overlay-title">TOUCH THE NUMBERS</div>
+  <div class="overlay-desc">数字を1から順番にタップ！<br>全てのボタンはオレンジ色で始まり<br>正解を押すたびに灰色に変わります</div>
+  <div style="color:#555;font-size:11px;letter-spacing:2px;font-family:Arial;">GRID SIZE</div>
+  <div class="mode-grid">
+    <button class="gold-btn mode-btn" onclick="startGame(3,false)"><span class="mode-num">3×3</span><span class="mode-sub">EASY</span></button>
+    <button class="gold-btn mode-btn" onclick="startGame(4,false)"><span class="mode-num">4×4</span><span class="mode-sub">NORMAL</span></button>
+    <button class="gold-btn mode-btn" onclick="startGame(5,false)"><span class="mode-num">5×5</span><span class="mode-sub">HARD</span></button>
+    <button class="gold-btn mode-btn" onclick="startGame(6,false)"><span class="mode-num">6×6</span><span class="mode-sub">EXPERT</span></button>
+    <button class="gold-btn mode-btn" onclick="startGame(5,true)" style="grid-column:span 2;">
+      <span class="mode-num">5×5 → 50</span>
+      <span class="mode-sub">SPECIAL</span>
+    </button>
+  </div>
+</div>
+
+<!-- Countdown -->
+
+<div class="overlay hidden" id="countdownScreen">
+  <div class="countdown-num" id="countdownNum">3</div>
+</div>
+
+<!-- Result -->
+
+<div class="overlay hidden" id="resultScreen">
+  <div class="overlay-title" id="resultTitle">CLEAR!</div>
+  <div class="result-time" id="resultTime">0.00</div>
+  <div class="result-unit">SECONDS</div>
+  <div class="info-line" id="bestLine"></div>
+  <div class="info-line" id="missLine"></div>
+  <button class="gold-btn action-btn" onclick="showStart()">RETRY</button>
+</div>
+
+<!-- Game UI -->
+
+<div class="container" id="gameUI" style="display:none;">
+  <div class="title">TOUCH THE NUMBERS</div>
+  <div class="stats">
+    <div class="stat-box"><div class="stat-label">TIME</div><div class="stat-value" id="timerDisplay">0.00</div></div>
+    <div class="stat-box"><div class="stat-label">BEST</div><div class="stat-value white" id="bestDisplay">--</div></div>
+    <div class="stat-box"><div class="stat-label">MISS</div><div class="stat-value red" id="missDisplay">0</div></div>
+  </div>
+
+  <!-- フェーズ表示（100モード時のみ） -->
+
+  <div class="phase-bar" id="phaseBar" style="display:none;">
+    <div class="phase-label">PHASE</div>
+    <div class="phase-dots" id="phaseDots"></div>
+    <div class="phase-label" id="phaseRange">1〜25</div>
+  </div>
+
+  <div class="next-bar">
+    <div class="next-label">NEXT</div>
+    <div class="next-number" id="nextDisplay">1</div>
+  </div>
+  <div class="grid-wrap">
+    <div class="grid" id="gameGrid"></div>
+  </div>
+</div>
+
+<script>
+let gridSize = 4, next = 1, total = 0;
+let startTime = null, timerInterval = null;
+let misses = 0, bests = {}, running = false;
+let mode50 = false, phase = 0;
+
+const PHASE_COUNT = 2;
+const PHASE_SIZE  = 25;
+
+const grid         = document.getElementById('gameGrid');
+const timerEl      = document.getElementById('timerDisplay');
+const bestEl       = document.getElementById('bestDisplay');
+const missEl       = document.getElementById('missDisplay');
+const nextEl       = document.getElementById('nextDisplay');
+const gameUI       = document.getElementById('gameUI');
+const startScreen  = document.getElementById('startScreen');
+const cdScreen     = document.getElementById('countdownScreen');
+const resultScreen = document.getElementById('resultScreen');
+const phaseBar     = document.getElementById('phaseBar');
+const phaseDots    = document.getElementById('phaseDots');
+const phaseRange   = document.getElementById('phaseRange');
+
+function showStart() {
+  resultScreen.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+  gameUI.style.display = 'none';
+}
+
+function startGame(size, is50) {
+  gridSize = size;
+  mode50   = is50;
+  total    = is50 ? 50 : size * size;
+  const key = is50 ? '5x50' : size;
+  bests[key] = bests[key] || null;
+  startScreen.classList.add('hidden');
+  doCountdown();
+}
+
+function doCountdown() {
+  cdScreen.classList.remove('hidden');
+  let c = 3; setCD(c);
+  const iv = setInterval(() => {
+    c--;
+    if (c === 0) {
+      setCD('GO!'); clearInterval(iv);
+      setTimeout(() => { cdScreen.classList.add('hidden'); initGame(); }, 850);
+    } else { setCD(c); }
+  }, 850);
+}
+
+function setCD(v) {
+  const el = document.getElementById('countdownNum');
+  el.textContent = v;
+  el.style.animation = 'none'; el.offsetWidth;
+  el.style.animation = 'countAnim 0.85s ease-in-out';
+}
+
+function initGame() {
+  next = 1; misses = 0; running = false; phase = 0;
+  clearInterval(timerInterval);
+  timerEl.textContent = '0.00';
+  missEl.textContent  = '0';
+  nextEl.textContent  = '1';
+  const key = mode50 ? '5x50' : gridSize;
+  bestEl.textContent = bests[key] ? bests[key].toFixed(2) : '--';
+
+  if (mode50) {
+    phaseBar.style.display = 'flex';
+    buildPhaseDots();
+    initPhase(0);
+  } else {
+    phaseBar.style.display = 'none';
+    buildNormalGrid();
+  }
+
+  gameUI.style.display = 'flex';
+}
+
+// ─── 通常グリッド ──────────────────────────────────────
+function buildNormalGrid() {
+  const nums = Array.from({length: gridSize * gridSize}, (_, i) => i + 1);
+  shuffle(nums);
+  const fs = gridSize <= 3 ? '34px' : gridSize === 4 ? '28px' : gridSize === 5 ? '22px' : '17px';
+  grid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+  grid.innerHTML = '';
+  nums.forEach(num => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.textContent = num;
+    cell.dataset.num = num;
+    cell.style.fontSize = fs;
+    cell.addEventListener('pointerdown', onTap);
+    grid.appendChild(cell);
+  });
+}
+
+// ─── 50モード：フェーズ0初期化 ───────────────────────
+let phase2Pool = []; // 残りの26〜50の数字プール
+
+function initPhase(ph) {
+  phase = ph;
+  updatePhaseDots();
+
+  // 26〜50をシャッフルしてプール作成
+  phase2Pool = Array.from({length: 25}, (_, i) => i + 26);
+  shuffle(phase2Pool);
+
+  // グリッド構築（1〜25をシャッフル配置）
+  const nums = Array.from({length: 25}, (_, i) => i + 1);
+  shuffle(nums);
+  grid.style.gridTemplateColumns = 'repeat(5, 1fr)';
+  grid.innerHTML = '';
+  nums.forEach(num => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.textContent = num;
+    cell.dataset.num = num;
+    cell.dataset.phase = '1';
+    cell.style.fontSize = '22px';
+    cell.addEventListener('pointerdown', onTap);
+    grid.appendChild(cell);
+  });
+
+  next = 1;
+  nextEl.textContent = '1';
+  phaseRange.textContent = '1〜25 → 26〜50';
+}
+
+// ─── タップ ───────────────────────────────────────────
+function onTap(e) {
+  e.preventDefault();
+  if (!running) {
+    running = true; startTime = performance.now();
+    timerInterval = setInterval(() => {
+      timerEl.textContent = ((performance.now() - startTime) / 1000).toFixed(2);
+    }, 30);
+  }
+  const cell = e.currentTarget;
+  const num  = parseInt(cell.dataset.num);
+
+  if (num === next) {
+    if (!mode50) {
+      // ─── 通常モード ───
+      cell.className = 'cell done';
+      cell.removeEventListener('pointerdown', onTap);
+      next++;
+      nextEl.textContent = next <= total ? next : '✓';
+      if (next > total) finish();
+    } else {
+      // ─── 50モード ───
+      const cellPhase = parseInt(cell.dataset.phase);
+
+      if (cellPhase === 1) {
+        // フェーズ1のセルを押した → プールから1つ取り出してそのマスに表示
+        const p2num = phase2Pool.pop();
+        cell.dataset.num   = p2num;
+        cell.dataset.phase = '2';
+        cell.textContent   = p2num;
+        // ゴールドのまま（まだ押せる）
+        next++;
+        nextEl.textContent = next <= 25 ? next : next <= 50 ? next : '✓';
+
+        // フェーズ1完了チェック（next > 25）
+        if (next > 25) {
+          phase = 1;
+          updatePhaseDots();
+          phaseRange.textContent = '26〜50';
+          next = 26;
+          nextEl.textContent = '26';
+        }
+      } else {
+        // フェーズ2のセルを押した
+        cell.className = 'cell done';
+        cell.removeEventListener('pointerdown', onTap);
+        next++;
+        nextEl.textContent = next <= 50 ? next : '✓';
+        if (next > 50) finish();
+      }
+    }
+  } else {
+    misses++;
+    missEl.textContent = misses;
+    cell.classList.add('wrong-flash');
+    setTimeout(() => cell.classList.remove('wrong-flash'), 380);
+  }
+}
+
+function finish() {
+  clearInterval(timerInterval); running = false;
+  const elapsed = (performance.now() - startTime) / 1000;
+  spawnParticles();
+  setTimeout(() => showResult(elapsed), 350);
+}
+
+// ─── フェーズドット ────────────────────────────────────
+function buildPhaseDots() {
+  phaseDots.innerHTML = '';
+  for (let i = 0; i < PHASE_COUNT; i++) {
+    const d = document.createElement('div');
+    d.className = 'phase-dot';
+    d.textContent = i + 1;
+    phaseDots.appendChild(d);
+  }
+}
+function updatePhaseDots() {
+  phaseDots.querySelectorAll('.phase-dot').forEach((d, i) => {
+    d.className = 'phase-dot' + (i < phase ? ' done' : i === phase ? ' active' : '');
+  });
+}
+
+// ─── リザルト ─────────────────────────────────────────
+function showResult(elapsed) {
+  const key = mode50 ? '5x50' : gridSize;
+  const isNew = !bests[key] || elapsed < bests[key];
+  if (isNew) bests[key] = elapsed;
+  document.getElementById('resultTitle').textContent = isNew ? '🏆 BEST RECORD!' : 'CLEAR!';
+  document.getElementById('resultTime').textContent  = elapsed.toFixed(2);
+  document.getElementById('bestLine').innerHTML      = 'BEST: <span>' + bests[key].toFixed(2) + 's</span>';
+  document.getElementById('missLine').textContent    = misses > 0 ? 'MISS: ' + misses : 'NO MISS — PERFECT! 🎉';
+  resultScreen.classList.remove('hidden');
+}
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+}
+
+// ─── パーティクル ─────────────────────────────────────
+const canvas = document.getElementById('particles');
+const ctx    = canvas.getContext('2d');
+let particles = [];
+function resizeCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; }
+resizeCanvas(); addEventListener('resize', resizeCanvas);
+
+function spawnParticles() {
+  for (let i = 0; i < 120; i++) {
+    const a = Math.random() * Math.PI * 2, s = 2 + Math.random() * 8;
+    particles.push({
+      x: canvas.width/2, y: canvas.height/2,
+      vx: Math.cos(a)*s, vy: Math.sin(a)*s - 3,
+      size: 3 + Math.random()*5, alpha: 1,
+      color: Math.random() > 0.4 ? '#f5c518' : Math.random() > 0.5 ? '#ffe97a' : '#fff8b0',
+    });
+  }
+  requestAnimationFrame(animParticles);
+}
+
+function animParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles = particles.filter(p => p.alpha > 0.02);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.alpha *= 0.95;
+    ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+  if (particles.length) requestAnimationFrame(animParticles);
+}
+
+showStart();
+</script>
+
+</body>
+</html>
